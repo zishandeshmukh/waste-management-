@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Waste Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        .camera-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        #video, #canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 5px solid #ddd;
+            transition: all 0.3s ease;
+        }
+
+        .result-card.biodegradable {
+            border-left-color: #4CAF50;
+            background: linear-gradient(135deg, #e8f5e8, #f1f8e9);
+        }
+
+        .result-card.non-biodegradable {
+            border-left-color: #FF5722;
+            background: linear-gradient(135deg, #ffeee8, #fff3f0);
+        }
+
+        .result-card.e-waste {
+            border-left-color: #9C27B0;
+            background: linear-gradient(135deg, #f3e5f5, #f8e8fa);
+        }
+
+        .waste-type {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .waste-type.biodegradable { color: #4CAF50; }
+        .waste-type.non-biodegradable { color: #FF5722; }
+        .waste-type.e-waste { color: #9C27B0; }
+
+        .product-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .confidence {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .description {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .category-icons {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .category-icon {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 10px;
+            min-width: 150px;
+            transition: transform 0.3s ease;
+        }
+
+        .category-icon:hover {
+            transform: scale(1.05);
+        }
+
+        .category-icon.biodegradable {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            color: #2e7d32;
+        }
+
+        .category-icon.non-biodegradable {
+            background: linear-gradient(135deg, #ffeee8, #ffcdd2);
+            color: #c62828;
+        }
+
+        .category-icon.e-waste {
+            background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+            color: #6a1b9a;
+        }
+
+        .icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .camera-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗂️ Smart Waste Classifier</h1>
+            <p>AI-Powered Waste Segregation System</p>
+        </div>
+
+        <div class="category-icons">
+            <div class="category-icon biodegradable">
+                <div class="icon">🌱</div>
+                <div>Biodegradable</div>
+            </div>
+            <div class="category-icon non-biodegradable">
+                <div class="icon">🗑️</div>
+                <div>Non-Biodegradable</div>
+            </div>
+            <div class="category-icon e-waste">
+                <div class="icon">📱</div>
+                <div>E-Waste</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="camera-section">
+                <div class="camera-container">
+                    <video id="video" autoplay></video>
+                    <canvas id="canvas"></canvas>
+                </div>
+                <div class="camera-controls">
+                    <button id="startCamera" class="btn btn-primary">Start Camera</button>
+                    <button id="captureBtn" class="btn btn-secondary" disabled>Capture & Analyze</button>
+                    <button id="stopCamera" class="btn btn-warning" disabled>Stop Camera</button>
+                </div>
+                <div id="status"></div>
+            </div>
+
+            <div class="results-section">
+                <div id="results">
+                    <div class="result-card">
+                        <h3>Instructions:</h3>
+                        <ol>
+                            <li>Click "Start Camera" to begin</li>
+                            <li>Point camera at the waste item</li>
+                            <li>Click "Capture & Analyze" to classify</li>
+                            <li>View the waste type and disposal instructions</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Google Cloud Vision API configuration
+        const API_KEY = 'AIzaSyDQGOgP7RNM_3L4J5iBsN8U2kW1mFdE9xY'; // Replace with actual API key
+        const VISION_API_URL = `https://vision.googleapis.com/v1/images:annotate?key=${API_KEY}`;
+
+        // Waste classification database
+        const wasteClassification = {
+            // Biodegradable items
+            biodegradable: {
+                keywords: [
+                    'apple', 'banana', 'orange', 'fruit', 'vegetable', 'food', 'bread', 'leaf', 'leaves',
+                    'flower', 'plant', 'tree', 'wood', 'paper', 'cardboard', 'newspaper', 'book',
+                    'cotton', 'wool', 'leather', 'meat', 'fish', 'cheese', 'milk', 'egg', 'shell',
+                    'grass', 'branch', 'twig', 'bamboo', 'jute', 'hemp', 'organic', 'compost',
+                    'rice', 'wheat', 'grain', 'cereal', 'pasta', 'pizza', 'sandwich', 'salad'
+                ],
+                description: "Dispose in compost bin or organic waste collection. These items decompose naturally and can be converted into nutrient-rich compost."
+            },
+            
+            // Non-biodegradable items
+            nonBiodegradable: {
+                keywords: [
+                    'plastic', 'bottle', 'bag', 'container', 'cup', 'plate', 'utensil', 'straw',
+                    'glass', 'jar', 'window', 'mirror', 'metal', 'aluminum', 'steel', 'iron',
+                    'can', 'tin', 'foil', 'wire', 'nail', 'screw', 'ceramic', 'pottery',
+                    'rubber', 'tire', 'shoe', 'boot', 'synthetic', 'nylon', 'polyester',
+                    'styrofoam', 'foam', 'packaging', 'wrapper', 'film', 'sheet'
+                ],
+                description: "Dispose in recycling bin or general waste. These materials don't decompose naturally and require proper recycling or waste management."
+            },
+            
+            // E-waste items
+            eWaste: {
+                keywords: [
+                    'phone', 'mobile', 'smartphone', 'computer', 'laptop', 'tablet', 'keyboard',
+                    'mouse', 'monitor', 'screen', 'television', 'tv', 'radio', 'speaker',
+                    'headphone', 'earphone', 'charger', 'cable', 'wire', 'battery', 'circuit',
+                    'board', 'chip', 'processor', 'memory', 'hard drive', 'cd', 'dvd',
+                    'camera', 'watch', 'smartwatch', 'remote', 'controller', 'electronic',
+                    'appliance', 'microwave', 'refrigerator', 'washing machine', 'printer',
+                    'scanner', 'router', 'modem', 'adapter', 'transformer', 'led', 'bulb'
+                ],
+                description: "Take to e-waste collection center or authorized dealer. Electronic items contain toxic materials and valuable metals that need special handling."
+            }
+        };
+
+        // DOM elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startCamera');
+        const captureBtn = document.getElementById('captureBtn');
+        const stopBtn = document.getElementById('stopCamera');
+        const results = document.getElementById('results');
+        const status = document.getElementById('status');
+
+        let stream = null;
+
+        // Start camera
+        startBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'environment' // Use back camera on mobile
+                    } 
+                });
+                video.srcObject = stream;
+                
+                startBtn.disabled = true;
+                captureBtn.disabled = false;
+                stopBtn.disabled = false;
+                
+                showStatus('Camera started successfully!', 'success');
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                showStatus('Error: Could not access camera. Please check permissions.', 'error');
+            }
+        });
+
+        // Stop camera
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                stream = null;
+            }
+            
+            startBtn.disabled = false;
+            captureBtn.disabled = true;
+            stopBtn.disabled = true;
+            
+            showStatus('Camera stopped.', 'success');
+        });
+
+        // Capture and analyze
+        captureBtn.addEventListener('click', async () => {
+            if (!stream) return;
+            
+            // Capture image from video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            // Convert to base64
+            const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+            
+            // Show loading
+            showLoading();
+            
+            try {
+                // Call Google Vision API
+                const result = await analyzeImage(imageData);
+                displayResults(result);
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showStatus('Error analyzing image. Please try again.', 'error');
+            }
+        });
+
+        // Analyze image with Google Vision API
+        async function analyzeImage(imageData) {
+            const requestBody = {
+                requests: [{
+                    image: {
+                        content: imageData
+                    },
+                    features: [
+                        { type: 'LABEL_DETECTION', maxResults: 20 },
+                        { type: 'OBJECT_LOCALIZATION', maxResults: 10 },
+                        { type: 'TEXT_DETECTION', maxResults: 5 }
+                    ]
+                }]
+            };
+
+            const response = await fetch(VISION_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.responses[0];
+        }
+
+        // Classify waste type based on detected labels
+        function classifyWaste(labels, objects) {
+            const allItems = [...labels, ...objects];
+            const scores = {
+                biodegradable: 0,
+                nonBiodegradable: 0,
+                eWaste: 0
+            };
+
+            let detectedProduct = '';
+            let maxConfidence = 0;
+
+            // Analyze each detected item
+            allItems.forEach(item => {
+                const itemName = item.description || item.name || '';
+                const confidence = item.score || 0;
+
+                if (confidence > maxConfidence) {
+                    maxConfidence = confidence;
+                    detectedProduct = itemName;
+                }
+
+                const itemLower = itemName.toLowerCase();
+
+                // Check against classification keywords
+                Object.keys(wasteClassification).forEach(category => {
+                    const keywords = wasteClassification[category].keywords;
+                    const matches = keywords.filter(keyword => itemLower.includes(keyword));
+                    
+                    if (matches.length > 0) {
+                        const categoryScore = matches.length * confidence * 100;
+                        if (category === 'biodegradable') scores.biodegradable += categoryScore;
+                        else if (category === 'nonBiodegradable') scores.nonBiodegradable += categoryScore;
+                        else if (category === 'eWaste') scores.eWaste += categoryScore;
+                    }
+                });
+            });
+
+            // Determine winning category
+            const maxScore = Math.max(scores.biodegradable, scores.nonBiodegradable, scores.eWaste);
+            let wasteType = 'unknown';
+            
+            if (maxScore > 0) {
+                if (scores.biodegradable === maxScore) wasteType = 'biodegradable';
+                else if (scores.nonBiodegradable === maxScore) wasteType = 'non-biodegradable';
+                else if (scores.eWaste === maxScore) wasteType = 'e-waste';
+            }
+
+            return {
+                type: wasteType,
+                product: detectedProduct || 'Unknown Item',
+                confidence: Math.round(maxConfidence * 100),
+                scores: scores
+            };
+        }
+
+        // Display analysis results
+        function displayResults(apiResponse) {
+            const labels = apiResponse.labelAnnotations || [];
+            const objects = apiResponse.localizedObjectAnnotations || [];
+            
+            if (labels.length === 0 && objects.length === 0) {
+                results.innerHTML = `
+                    <div class="result-card">
+                        <div class="error">No objects detected. Please try capturing a clearer image.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const classification = classifyWaste(labels, objects);
+            const wasteType = classification.type;
+            
+            let description = "Unknown item type. Please dispose according to local waste management guidelines.";
+            let typeDisplay = "Unknown";
+            let icon = "❓";
+
+            if (wasteType !== 'unknown') {
+                if (wasteType === 'biodegradable') {
+                    description = wasteClassification.biodegradable.description;
+                    typeDisplay = "Biodegradable";
+                    icon = "🌱";
+                } else if (wasteType === 'non-biodegradable') {
+                    description = wasteClassification.nonBiodegradable.description;
+                    typeDisplay = "Non-Biodegradable";
+                    icon = "🗑️";
+                } else if (wasteType === 'e-waste') {
+                    description = wasteClassification.eWaste.description;
+                    typeDisplay = "E-Waste";
+                    icon = "📱";
+                }
+            }
+
+            results.innerHTML = `
+                <div class="result-card ${wasteType}">
+                    <div class="waste-type ${wasteType}">${icon} ${typeDisplay}</div>
+                    <div class="product-name">Product: ${classification.product}</div>
+                    <div class="confidence">Confidence: ${classification.confidence}%</div>
+                    <div class="description">${description}</div>
+                </div>
+                
+                <div class="result-card">
+                    <h4>Detected Labels:</h4>
+                    <ul>
+                        ${labels.slice(0, 5).map(label => 
+                            `<li>${label.description} (${Math.round(label.score * 100)}%)</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Show loading state
+        function showLoading() {
+            results.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing image with AI...</p>
+                </div>
+            `;
+        }
+
+        // Show status message
+        function showStatus(message, type = 'info') {
+            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                status.innerHTML = '';
+            }, 3000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            showStatus('Ready to classify waste items!', 'success');
+        });
+    </script>
+</body>
+</html>
